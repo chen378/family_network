@@ -2,9 +2,10 @@ import csv
 import json
 import time
 import pickle
-from utils import postfor_info
+from tool import postfor_info
 from node import node
 from tqdm import tqdm
+from config import ROOT
 
 
 # 从nodefinger10.csv读取所有待处理节点指纹，多进程爬取历史日志中不包含的节点信息，并写入res1.csv中
@@ -20,7 +21,7 @@ def read_finger(node_csv):
     return node_list, count
 
 
-def dopost(node_list, json_file="./downloads/details.json"):
+def dopost(node_list, json_file=f"{ROOT}/download/details.json"):
     res_list = []
     with open(json_file, 'r', encoding='utf-8') as f:
         relays = json.load(f)["relays"]

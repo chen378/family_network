@@ -1,6 +1,11 @@
+import pickle
+
 import pandas as pd
 from config import ROOT
 import os
+import networkx as nx
+import pandas as pd
+import numpy as np
 
 # 读取 collect.json文件
 def collect_read(file_path,node_delay_csv,Ff=True, Sf=True, Tf=True):
@@ -135,11 +140,68 @@ def clean_delay2node(input_file, output_file):
     except Exception as e:
         print(f"处理过程中出现错误: {e}")
 
+# 定义非线性归一化函数（这里使用sigmoid函数）
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def normalize(value, avg, max_val, min_val):
+    # 首先进行线性归一化
+    norm_value = (value - min_val) / (max_val - min_val)
+    # 然后使用sigmoid函数进行非线性归一化
+    return sigmoid(norm_value) * 2 - 1  # 映射到 -1 到 1 之间
+
+def build_graph_from_csv(csv_file):
+    # 读取CSV文件
+    df = pd.read_csv(csv_file)
+
+    # 提取所需的列
+    path_strs = df['path_str']
+    delays = df['delay']
+    variances = df['variance']
+
+    # 定义归一化所需的参数
+    delay_avg = 0.307690167
+    delay_max = 3.2631582
+    delay_min = 0.0283798
+    variance_avg = 0.016208862
+    variance_max = 8.139860049
+    variance_min = 0
+
+    # 创建一个空的无向图
+    G = nx.Graph()
+
+    # 遍历每一行数据
+    for path_str, delay, variance in zip(path_strs, delays, variances):
+        # 分割path_str
+        paths = path_str.split(' ')  # 假设path_str是由3个空格隔开的
+
+        # 计算归一化值
+        norm_delay = normalize(delay, delay_avg, delay_max, delay_min)
+        norm_variance = normalize(variance, variance_avg, variance_max, variance_min)
+
+        # 计算边的权重（这里简单地取两者的平均值）
+        edge_weight = (norm_delay + norm_variance) / 2
+
+        # 添加节点和边
+        G.add_node(paths[0])
+        G.add_node(paths[1])
+        G.add_node(paths[2])
+        G.add_edge(paths[0], paths[1], weight=edge_weight)
+        G.add_edge(paths[1], paths[2], weight=edge_weight)
+
+    return G
+
+
 
 if __name__ == "__main__":
     # collect_read(f"{ROOT}\\data\\path_15.csv",f"{ROOT}\\data\\node_delay.csv")
     # file_path = f'{ROOT}/data/path.csv'
     # result = collect_read(file_path)
     # print(result)
-    clean_day2node(f"{ROOT}\\data\\day.csv",f"{ROOT}\\data\\node.csv")
-    clean_delay2node(f"{ROOT}\\data\\node_delay.csv",f"{ROOT}\\data\\node.csv")
+
+    # clean_day2node(f"{ROOT}\\data\\day.csv",f"{ROOT}\\data\\node.csv")
+    # clean_delay2node(f"{ROOT}\\data\\node_delay.csv",f"{ROOT}\\data\\node.csv")
+
+    g_circuit = build_graph_from_csv(f"{ROOT}\\data\\path_15.csv")
+    with open(f'{ROOT}\\pkl\\net_circuit.pkl', 'wb') as pkl_file:
+        pickle.dump(g_circuit, pkl_file)

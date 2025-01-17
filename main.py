@@ -11,5 +11,16 @@ extract_to_folder = f"./download"
 # 按装订区域中的绿色按钮以运行脚本。
 if __name__ == '__main__':
 
+    # 下载数据
     MicroDownload(descs_path, extract_to_folder)
-# 访问 https://www.jetbrains.com/help/pycharm/ 获取 PyCharm 帮助
+
+
+    # 数据处理
+
+
+    # 数据合并
+
+
+    # 生成图
+
+    # 图神经网络

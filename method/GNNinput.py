@@ -75,3 +75,9 @@ for epoch in range(1, 201):
         test_acc = tmp_test_acc
     log = 'Epoch: {:03d}, Train: {:.4f}, Val: {:.4f}, Test: {:.4f}'
     print(log.format(epoch, train_acc, best_val_acc, test_acc))
+
+
+if __name__ == "__main__":
+    data = load_data()
+    print(data)
+
