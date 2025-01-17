@@ -1,6 +1,6 @@
 import pandas as pd
 from config import ROOT
-
+import os
 
 # 读取 collect.json文件
 def collect_read(file_path,node_delay_csv,Ff=True, Sf=True, Tf=True):
@@ -32,7 +32,7 @@ def collect_read(file_path,node_delay_csv,Ff=True, Sf=True, Tf=True):
     #         frequent_ips[ip] = count
     # return frequent_ips
 
-    # 以fingerprint（path_str）为主键
+    # 以fingerprint（path_str）为主键 目前平均值为delay:0.308962626	variance:0.017804916 times:13.16234355 bandwidth:15311
     df = pd.read_csv(file_path)
     # 将 path_str 拆分为多个列
     df[['fp1', 'fp2', 'fp3']] = df['path_str'].str.split(expand=True)
@@ -48,13 +48,98 @@ def collect_read(file_path,node_delay_csv,Ff=True, Sf=True, Tf=True):
     ).reset_index()
     result_df.to_csv(node_delay_csv, index=False)
 
+def clean_day2node(input_file, output_file):
+    """
+    处理 day.csv 文件，以 finger 为主键，对指定列进行映射，保留第一次出现的值，
+    对 bandwidth 做均值聚合，并记录 bandwidth 的出现次数，以 bandwidth_change_times 存储。
+
+    :param input_file: 输入的 day.csv 文件路径
+    :param output_file: 输出的 node.csv 文件路径
+    """
+    # 读取 day.csv 文件
+    df = pd.read_csv(input_file)
+
+    # 定义需要保留第一次出现值的列
+    columns_to_keep_first = [
+        'nickname', 'ip', 'dirport', 'Authority', 'BadExit', 'Exit',
+        'Fast', 'Guard', 'Stable', 'V2Dir', 'HSDir', 'version'
+    ]
+
+    # 以 finger 为主键，对指定列进行分组
+    grouped = df.groupby('finger')
+
+    # 对需要保留第一次出现值的列，取第一个值
+    first_values = grouped[columns_to_keep_first].first()
+
+    # 计算 bandwidth 的均值
+    bandwidth_mean = grouped['bandwidth'].mean()
+
+    # 计算 bandwidth 的出现次数
+    bandwidth_change_times = grouped['bandwidth'].count()
+
+    # 合并结果
+    result = pd.concat([first_values, bandwidth_mean, bandwidth_change_times], axis=1)
+    result = result.rename(columns={'bandwidth': 'bandwidth_mean', 'bandwidth': 'bandwidth_change_times'})
+
+    # 保存结果到 node.csv 文件
+    result.to_csv(output_file, index=True)
 
 
-# def split_and_aggregate_pandas(out_csv, node_delay_csv):
+
+def clean_delay2node(input_file, output_file):
+    """
+    以输入的 fringerprint 为主键，从输入文件中获取 delay、variance 和 times 列，
+    将 fringerprint 列名改为 finger 后，写入输出文件。
+    已去重的数据无需额外处理，若输出 CSV 中无对应值则填充为 0。
+
+    :param input_file: 输入的 node_delay.csv 文件路径
+    :param output_file: 输出的 node.csv 文件路径
+    """
+    try:
+        # 读取输入文件
+        df = pd.read_csv(input_file)
+
+        # 检查输入文件中是否存在 fringerprint 列
+        if 'fingerprint' not in df.columns:
+            raise KeyError("输入文件中未找到 'fingerprint' 列，请检查输入文件内容。")
+
+        # 选择需要的列
+        selected_columns = ['fingerprint', 'delay', 'variance', 'times']
+        df_selected = df[selected_columns]
+
+        # 将 fringerprint 列名改为 finger
+        df_selected.rename(columns={'fingerprint': 'finger'}, inplace=True)
+
+        # 检查输出文件是否存在
+        if os.path.exists(output_file):
+            # 读取原有输出文件
+            df_output = pd.read_csv(output_file)
+
+            # 合并数据
+            merged_df = pd.merge(df_output, df_selected, on='finger', how='left')
+
+            # 填充缺失值为 0
+            merged_df.fillna(0, inplace=True)
+
+            # 将合并后的数据写入输出文件
+            merged_df.to_csv(output_file, index=False)
+        else:
+            # 如果输出文件不存在，直接写入新数据
+            df_selected.to_csv(output_file, index=False)
+
+        print(f"数据已成功写入 {output_file}")
+    except FileNotFoundError:
+        print(f"输入文件 {input_file} 未找到，请检查文件路径。")
+    except KeyError as ke:
+        print(f"列名错误: {ke}")
+    except Exception as e:
+        print(f"处理过程中出现错误: {e}")
 
 
 if __name__ == "__main__":
-    collect_read(f"{ROOT}\\data\path_15.csv",f"{ROOT}\\data\\node_delay.csv")
+    # collect_read(f"{ROOT}\\data\\path_15.csv",f"{ROOT}\\data\\node_delay.csv")
     # file_path = f'{ROOT}/data/path.csv'
     # result = collect_read(file_path)
     # print(result)
+    clean_day2node(f"{ROOT}\\data\\day.csv",f"{ROOT}\\data\\node.csv")
+    clean_delay2node(f"{ROOT}\\data\\node_delay.csv",f"{ROOT}\\data\\node.csv")
