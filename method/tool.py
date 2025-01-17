@@ -80,7 +80,7 @@ if __name__ == "__main__":
     month_str = f"{month:02d}"
     url = f"https://collector.torproject.org/archive/relay-descriptors/microdescs/microdescs-{year}-{month}.tar.xz"
     descs_path = f"./downloads/{year}-{month}.tar.xz"
-    detail_path = "./downloads/details.json"
+    detail_path = f"./downloads/details.json"
     extract_to_folder = 'extracted_files'
 
     # 你需要代理才能访问这个网址
