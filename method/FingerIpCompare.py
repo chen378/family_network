@@ -102,9 +102,9 @@ def anlysis_HDSir(ip_list, csv_file):
 
 if __name__ == "__main__":
     # 合成day.log
-    # merge_everyday('D:\\family_network\download\microdescs-2024-11\consensus-microdesc')
+    merge_everyday('E:\\family_network\download\microdescs-2024-11\consensus-microdesc')
     # 生成day.csv
-    df = process_consensus("D:\\family_network\data\合成day.log", f'{ROOT}/data/day1.csv')
+    df = process_consensus("E:\\family_network\data\合成day.log", f'{ROOT}/data/day1.csv')
 
     # 画图
     # hash_ip2finger = read_csv("D:\\family_network\data\day.csv")

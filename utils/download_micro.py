@@ -63,5 +63,5 @@ def MicroDownload(descs_path, extract_to_folder):
 
 
 if __name__ == "__main__":
-
-    MicroDownload(descs_path, extract_to_folder)
+    print()
+    # MicroDownload(descs_path, extract_to_folder)

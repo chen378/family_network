@@ -1,4 +1,5 @@
 import pickle
+import sys
 
 import networkx as nx
 
@@ -11,8 +12,7 @@ from config import ROOT
 import tarfile
 import matplotlib.pyplot as plt
 from networkx.drawing.nx_agraph import graphviz_layout
-import igraph as ig
-from pyvis.network import Network
+
 
 output_path = f"{ROOT}/output/"
 finger_pkl = f"{ROOT}/pkl/finger.pkl"
@@ -81,6 +81,35 @@ def merge_net(g_f, g_c, g_s, weight_f, weight_c, weight_s):
     return g_total
 
 
+def family_net_generate():
+    g, val, _ = process_micro_declared_family(micro_path)
+    print(g.number_of_nodes())
+    # 此时得到的的g为声明家族图，val1为[家族序号，家族节点]
+    g_family, val_family, _, _ = read_res_csv(g, res_csv, val,
+                                              effective_family_or_not=True,
+                                              micro_contact_family_or_not=False,
+                                              )
+    print(g_family.number_of_nodes())
+    sys.exit()
+    # 控制代码的运行情况
+    Method_contact = True
+    Method_timeseq = True
+    # 图连接关系混合contact图关系
+    g_contact, _, val_contact, contact_finger_dict = read_res_csv(nx.Graph(), res_csv, None,
+                                                                  effective_family_or_not=False,
+                                                                  )
+    # 得到基于contact识别的隐藏家族节点
+    # contact_method(contact_finger_dict, val1, val_contact, detail_path, output_path)
+    print("step5 finish")
+    '''
+         方法2 依靠时序关系获取
+        '''
+    g_seq, val_seq = process_timeseq_family1(seq_pkl, nx.Graph(), None, detail_path, output_path)
+    g_total = merge_net(g_family, g_contact, g_seq, 0.6, 0.3, 0.1)
+    with open(f'{ROOT}\\pkl\\net.pkl', 'wb') as pkl_file:
+        pickle.dump(g_total, pkl_file)
+
+
 if __name__ == '__main__':
     """
     下载microdescs和details.txt
@@ -123,34 +152,10 @@ if __name__ == '__main__':
     '''
 
     # # 连接基本声明家族 第三个参数用于find_big_family() 这里用不到
-    g, val, _ = process_micro_declared_family(micro_path)
-    # 此时得到的的g为声明家族图，val1为[家族序号，家族节点]
-    g_family, val_family, _, _ = read_res_csv(g, res_csv, val,
-                                  effective_family_or_not=True,
-                                  micro_contact_family_or_not=False,
-                                  )
-    # 控制代码的运行情况
-    Method_contact = True
-    Method_timeseq = True
+    family_net_generate()
 
 
-    # 图连接关系混合contact图关系
-    g_contact, _, val_contact, contact_finger_dict = read_res_csv(nx.Graph(), res_csv, None,
-                                                                  effective_family_or_not=False,
-                                                                       )
-    # 得到基于contact识别的隐藏家族节点
-    # contact_method(contact_finger_dict, val1, val_contact, detail_path, output_path)
 
-    print("step5 finish")
-    '''
-     方法2 依靠时序关系获取
-    '''
-    g_seq,val_seq = process_timeseq_family1(seq_pkl, nx.Graph(), None, detail_path, output_path)
-
-    g_total = merge_net(g_family,g_contact,g_seq,0.6,0.3,0.1)
-
-    with open(f'{ROOT}\\pkl\\net.pkl', 'wb') as pkl_file:
-        pickle.dump(g_total, pkl_file)
 
 
     # # 使用 graphviz 布局

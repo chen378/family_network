@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 # 读取 collect.json文件
-def collect_read(file_path,node_delay_csv,Ff=True, Sf=True, Tf=True):
+def collect_read(file_path,node_delay_csv):
     """
     读取生成collect表单的统计信息，统计节点出现频次
     """
@@ -36,7 +36,6 @@ def collect_read(file_path,node_delay_csv,Ff=True, Sf=True, Tf=True):
     #     if count > 7:
     #         frequent_ips[ip] = count
     # return frequent_ips
-
     # 以fingerprint（path_str）为主键 目前平均值为delay:0.308962626	variance:0.017804916 times:13.16234355 bandwidth:15311
     df = pd.read_csv(file_path)
     # 将 path_str 拆分为多个列
@@ -146,9 +145,13 @@ def sigmoid(x):
 
 def normalize(value, avg, max_val, min_val):
     # 首先进行线性归一化
-    norm_value = (value - min_val) / (max_val - min_val)
-    # 然后使用sigmoid函数进行非线性归一化
-    return sigmoid(norm_value) * 2 - 1  # 映射到 -1 到 1 之间
+    if value <= avg:
+        norm_value = 2 * (value - min_val) / (avg - min_val) - 1  # 小于等于 avg 的部分归一化到 -1 到 0
+    else:
+        norm_value = 2 * (value - avg) / (max_val - avg)  # 大于 avg 的部分归一化到 0 到 1
+
+    # 然后使用 tanh 函数进行非线性归一化
+    return np.tanh(norm_value)
 
 def build_graph_from_csv(csv_file):
     # 读取CSV文件
@@ -160,12 +163,12 @@ def build_graph_from_csv(csv_file):
     variances = df['variance']
 
     # 定义归一化所需的参数
-    delay_avg = 0.307690167
-    delay_max = 3.2631582
-    delay_min = 0.0283798
-    variance_avg = 0.016208862
-    variance_max = 8.139860049
-    variance_min = 0
+    delay_avg = delays.mean()
+    delay_max = delays.max()
+    delay_min = delays.min()
+    variance_avg = variances.mean()
+    variance_max = variances.max()
+    variance_min = variances.min()
 
     # 创建一个空的无向图
     G = nx.Graph()
@@ -192,16 +195,36 @@ def build_graph_from_csv(csv_file):
     return G
 
 
-
-if __name__ == "__main__":
-    # collect_read(f"{ROOT}\\data\\path_15.csv",f"{ROOT}\\data\\node_delay.csv")
-    # file_path = f'{ROOT}/data/path.csv'
-    # result = collect_read(file_path)
-    # print(result)
-
-    # clean_day2node(f"{ROOT}\\data\\day.csv",f"{ROOT}\\data\\node.csv")
-    # clean_delay2node(f"{ROOT}\\data\\node_delay.csv",f"{ROOT}\\data\\node.csv")
-
-    g_circuit = build_graph_from_csv(f"{ROOT}\\data\\path_15.csv")
+def circuit_net_generate(path_merge_csv):
+    g_circuit = build_graph_from_csv(path_merge_csv)
     with open(f'{ROOT}\\pkl\\net_circuit.pkl', 'wb') as pkl_file:
         pickle.dump(g_circuit, pkl_file)
+
+    return g_circuit
+
+def save_node_neighbors_to_txt(g, output_file):
+    """
+    将图中每个节点及其邻居节点和边的权重存储到一个 txt 文件中。
+
+    :param g: networkx 图对象
+    :param output_file: 输出文件的路径
+    """
+    try:
+        with open(output_file, 'w') as file:
+            for node in g.nodes():
+                # file.write(f"Node {node} has neighbors:\n")
+                for neighbor in g.neighbors(node):
+                    weight = g[node][neighbor].get('weight', None)
+                    if weight >0:
+                        file.write(f"  - Neighbor {neighbor} with weight {weight}\n")
+        print(f"节点及其邻居信息已成功保存到 {output_file}")
+    except Exception as e:
+        print(f"保存节点及其邻居信息时发生错误: {e}")
+
+if __name__ == "__main__":
+    collect_read(f"{ROOT}\\data\\path_15.csv",f"{ROOT}\\data\\node_delay.csv")
+    clean_day2node(f"{ROOT}\\data\\day.csv",f"{ROOT}\\data\\node.csv")
+    clean_delay2node(f"{ROOT}\\data\\node_delay.csv",f"{ROOT}\\data\\node.csv")
+
+    g = circuit_net_generate(f"{ROOT}\\data\\path_15.csv")
+    save_node_neighbors_to_txt(g,'g.txt')
